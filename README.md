@@ -35,3 +35,57 @@ This service acts as a smart translation layer: microservices send simple query 
 │   └── transport/http/        # HTTP API layer
 ├── pkg/common/                # Logging utilities
 └── go.mod / go.sum
+```
+
+## 🚀 Getting Started
+
+### MongoDB Request
+
+You can make a request like this:
+
+```shell
+curl -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "mongodb",
+    "params": {
+      "database": "orders",
+      "collection": "users",
+      "filter": { "age": { "$gt": 20 } }
+    }
+}'
+```
+
+### PostgreSQL Request
+
+```shell
+curl -X POST http://localhost:8080/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "postgres",
+    "params": {
+      "query": "SELECT id, name, email FROM users WHERE active = true;"
+    }
+}'
+```
+
+### Response Example
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Alice Doe",
+    "email": "alice@example.com"
+  },
+  {
+    "id": 2,
+    "name": "Bob Smith",
+    "email": "bob@example.com"
+  }
+]
+```
+
+## 🗒️ Notes
+
+- In the code example I have `/query` path, but you can change it to any path you want or you can add more paths for different data sources.
