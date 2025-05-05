@@ -3,7 +3,9 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"github.com/thegodeveloper/data-gateway/internal/domain"
 )
 
@@ -11,42 +13,45 @@ type PostgresSource struct {
 	db *sql.DB
 }
 
-func NewPostgresSource(connStr string) (*PostgresSource, error) {
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-	return &PostgresSource{db: db}, nil
+func NewPostgresSource(db *sql.DB) *PostgresSource {
+	return &PostgresSource{db: db}
 }
 
-func (p *PostgresSource) Query(req domain.QueryRequest) (any, error) {
-	rows, err := p.db.Query(req.Query)
+func (p *PostgresSource) Query(ctx context.Context, req domain.QueryRequest) (any, error) {
+	queryStr, ok := req.Params["query"].(string)
+	if !ok {
+		return nil, errors.New("missing or invalid 'query' parameter")
+	}
+
+	rows, err := p.db.QueryContext(ctx, queryStr)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	cols, err := rows.Columns()
-	result := []map[string]interface{}{}
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
 
+	var results []map[string]interface{}
 	for rows.Next() {
-		columns := make([]interface{}, len(cols))
-		columnPointers := make([]interface{}, len(cols))
-		for i := range columns {
-			columnPointers[i] = &columns[i]
+		values := make([]interface{}, len(columns))
+		valuePtrs := make([]interface{}, len(columns))
+		for i := range values {
+			valuePtrs[i] = &values[i]
 		}
 
-		if err := rows.Scan(columnPointers...); err != nil {
+		if err := rows.Scan(valuePtrs...); err != nil {
 			return nil, err
 		}
 
 		rowMap := make(map[string]interface{})
-		for i, colName := range cols {
-			val := columnPointers[i].(*interface{})
-			rowMap[colName] = *val
+		for i, col := range columns {
+			rowMap[col] = values[i]
 		}
-		result = append(result, rowMap)
+		results = append(results, rowMap)
 	}
 
-	return result, nil
+	return results, nil
 }

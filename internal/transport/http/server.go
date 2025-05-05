@@ -3,34 +3,34 @@
 package http
 
 import (
-	"encoding/json"
 	"github.com/thegodeveloper/data-gateway/internal/app"
 	"github.com/thegodeveloper/data-gateway/internal/domain"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func StartServer(service *app.GatewayService, port string) {
-	http.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+func StartServer(svc *app.GatewayService, port string) {
+	r := gin.Default()
+	r.Use(otelgin.Middleware("data-gateway"))
 
+	r.POST("/query", func(c *gin.Context) {
 		var req domain.QueryRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		resp, err := service.Query(req)
+		ctx := c.Request.Context()
+		res, err := svc.HandleQuery(ctx, req)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		c.JSON(http.StatusOK, res)
 	})
 
-	http.ListenAndServe(":"+port, nil)
+	r.Run(":" + port)
 }

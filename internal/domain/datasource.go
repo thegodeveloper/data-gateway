@@ -2,12 +2,13 @@
 // domain/datasource.go
 package domain
 
+import "context"
+
 type QueryRequest struct {
-	Source string
-	Query  string
-	Params map[string]any
+	Source string                 `json:"source"`
+	Params map[string]interface{} `json:"params"`
 }
 
 type DataSource interface {
-	Query(req QueryRequest) (any, error)
+	Query(ctx context.Context, req QueryRequest) (any, error)
 }

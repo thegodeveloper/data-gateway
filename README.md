@@ -86,6 +86,24 @@ curl -X POST http://localhost:8080/query \
 ]
 ```
 
+## Implementing OpenTelemetry
+
+To implement OpenTelemetry, add the following dependencies:
+
+```shell
+go get go.opentelemetry.io/otel@latest
+go get go.opentelemetry.io/otel/sdk@latest
+go get go.opentelemetry.io/otel/trace@latest
+go get go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp@latest
+go get go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin@latest
+```
+
+### Update the Go module
+
+```shell
+go mod tidy
+```
+
 ## 🗒️ Notes
 
 - In the code example I have `/query` path, but you can change it to any path you want or you can add more paths for different data sources.

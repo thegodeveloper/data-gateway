@@ -4,49 +4,53 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"github.com/thegodeveloper/data-gateway/internal/domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 type MongoSource struct {
 	client *mongo.Client
 }
 
-func NewMongoSource(uri string) (*MongoSource, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
-	if err != nil {
-		return nil, err
-	}
-
-	return &MongoSource{client: client}, nil
+func NewMongoSource(client *mongo.Client) *MongoSource {
+	return &MongoSource{client: client}
 }
 
-func (m *MongoSource) Query(req domain.QueryRequest) (any, error) {
-	db := m.client.Database(req.Params["database"].(string))
-	col := db.Collection(req.Params["collection"].(string))
-
-	filter := bson.M{}
-	if f, ok := req.Params["filter"].(map[string]any); ok {
-		filter = f
+func (m *MongoSource) Query(ctx context.Context, req domain.QueryRequest) (any, error) {
+	dbName, ok := req.Params["database"].(string)
+	if !ok {
+		return nil, errors.New("missing 'database' parameter")
+	}
+	collectionName, ok := req.Params["collection"].(string)
+	if !ok {
+		return nil, errors.New("missing 'collection' parameter")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	filterRaw, ok := req.Params["filter"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("missing or invalid 'filter' parameter")
+	}
+	filter := bson.M(filterRaw)
 
-	cursor, err := col.Find(ctx, filter)
+	coll := m.client.Database(dbName).Collection(collectionName)
+	cursor, err := coll.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
-	var results []bson.M
-	if err := cursor.All(ctx, &results); err != nil {
+	var results []map[string]interface{}
+	for cursor.Next(ctx) {
+		var doc map[string]interface{}
+		if err := cursor.Decode(&doc); err != nil {
+			return nil, err
+		}
+		results = append(results, doc)
+	}
+
+	if err := cursor.Err(); err != nil {
 		return nil, err
 	}
 
