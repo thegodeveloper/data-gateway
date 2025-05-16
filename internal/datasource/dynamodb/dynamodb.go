@@ -22,6 +22,7 @@ func NewSource(client *sdynamodb.Client) *Source {
 }
 
 func (s *Source) Query(ctx context.Context, req domain.QueryRequest) (any, error) {
+
 	tableName, ok := req.Params["table"].(string)
 	if !ok || tableName == "" {
 		return nil, errors.New("missing or invalid 'table' parameter")

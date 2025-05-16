@@ -43,6 +43,25 @@ This service acts as a smart translation layer: microservices send simple query 
 
 You can make a request like this:
 
+``shell
+curl -X POST http://localhost:8080/receivers/orders \
+-H "Content-Type: application/json" \
+-d '{
+"params": {
+"database": "orders",
+"collection": "users",
+"filter": { "age": { "$gt": 20 } }
+}
+}'
+```
+
+
+/receivers/orders --> mongodb
+/receivers/orders --> dynamodb
+
+interprete
+crear la estructura postgres
+
 ```shell
 curl -X POST http://localhost:8080/query \
   -H "Content-Type: application/json" \
